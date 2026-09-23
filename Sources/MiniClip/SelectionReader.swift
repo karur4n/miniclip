@@ -3,7 +3,8 @@ import ApplicationServices
 
 enum SelectionReader {
     static func read() -> String? {
-        if let text = readViaAccessibility(), !text.isEmpty {
+        // NOTE: アクセシビリティ API が空文字を返したら選択なしと確定する。Cmd+C を送ると警告音やファイルのコピーが起きる
+        if let text = readViaAccessibility() {
             return text
         }
         return readViaCopy()
@@ -33,7 +34,12 @@ enum SelectionReader {
         }
         guard pasteboard.changeCount != before else { return nil }
 
-        let text = pasteboard.string(forType: .string)
+        // NOTE: 相手のアプリはクリアと書き込みを分けて行うので、changeCount が変わった直後は文字列がまだないことがある
+        var text = pasteboard.string(forType: .string)
+        while text == nil && Date() < deadline {
+            Thread.sleep(forTimeInterval: 0.01)
+            text = pasteboard.string(forType: .string)
+        }
         restore(pasteboard, saved)
         return text
     }
