@@ -6,6 +6,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let log = Logger(subsystem: "dev.karur4n.miniclip", category: "app")
     private var statusItem: NSStatusItem!
     private var trustTimer: Timer?
+    private let popup = PopupPanel()
+    private lazy var watcher = SelectionWatcher { [weak self] point in
+        self?.selectionDidEnd(at: point)
+    }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
@@ -29,7 +33,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func startWatching() {
         setIcon(trusted: true)
+        watcher.start()
         log.info("監視を開始")
+    }
+
+    private func selectionDidEnd(at point: NSPoint) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [weak self] in
+            guard let self,
+                  let raw = SelectionReader.read(),
+                  let menu = Actions.menu(for: raw) else { return }
+            popup.show(text: menu.text, actions: menu.actions, at: point)
+        }
     }
 
     private func setIcon(trusted: Bool) {
