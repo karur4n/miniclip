@@ -31,11 +31,12 @@
 次の順に試す。
 
 1. アクセシビリティ API: フォーカス中の要素の `kAXSelectedTextAttribute` を読む
-2. 1 で取れなかった場合: Cmd+C を送る
+   - 読めたら、その値を選択文字列とする。空文字なら「選択なし」で終え、Cmd+C は送らない（警告音やファイルのコピーを防ぐ）
+2. 1 で読めなかった場合（要素や属性を取得できない）: Cmd+C を送る
    - 送る前にクリップボードの全項目（全型のデータ）と `changeCount` を保存する
-   - `changeCount` が変わるまで最大 300ms 待つ
-   - 変わったら文字列を読み、保存しておいた内容をクリップボードに書き戻す
-   - 変わらなければ「選択なし」とする
+   - `changeCount` が変わるまで待つ。変わった後も、文字列が入るまで待つ（相手のアプリはクリアと書き込みを分けて行う）。待つのは合わせて最大 300ms
+   - 文字列を読んだら、保存しておいた内容をクリップボードに書き戻す
+   - `changeCount` が変わらなければ「選択なし」とする
 
 ## 操作
 
@@ -92,7 +93,23 @@ Xcode のプロジェクトファイルは使わない。Swift Package でビル
 
 - `make install`: `swift build -c release` → `MiniClip.app` を組み立てる → 署名 → `~/Applications/MiniClip.app` に置く
 - 署名には自己署名のコード署名用証明書 `MiniClip Dev` を使う。署名が毎回同じなので、作り直してもアクセシビリティ権限は外れない
-- 証明書はキーチェーンアクセスの「証明書アシスタント > 証明書を作成」で作る（名前 `MiniClip Dev`、種類「自己署名ルート」、証明書のタイプ「コード署名」）
+- 証明書はコマンドで作る（キーチェーンアクセスの証明書アシスタントは「指定された項目がキーチェーン内に見つかりませんでした」で失敗した）
+
+```sh
+openssl req -x509 -newkey rsa:2048 -nodes -keyout key.pem -out cert.pem -days 3650 \
+  -subj "/CN=MiniClip Dev" \
+  -addext "keyUsage=critical,digitalSignature" \
+  -addext "extendedKeyUsage=critical,codeSigning" \
+  -addext "basicConstraints=critical,CA:false"
+openssl pkcs12 -export -legacy -inkey key.pem -in cert.pem -name "MiniClip Dev" -out miniclip.p12 -passout pass:miniclip
+security import miniclip.p12 -k ~/Library/Keychains/login.keychain-db -P miniclip -T /usr/bin/codesign
+security add-trusted-cert -p codeSign -k ~/Library/Keychains/login.keychain-db cert.pem
+rm key.pem miniclip.p12 cert.pem
+security find-identity -v -p codesigning   # "MiniClip Dev" が出れば完了
+```
+
+- `-legacy` は OpenSSL 3 で必要（macOS の `security import` が新しい暗号方式の p12 を読めない）
+- `add-trusted-cert` で macOS のパスワード入力が出る
 - ログイン時の自動起動は、システム設定の「ログイン項目」に手で追加する
 
 ## テスト
