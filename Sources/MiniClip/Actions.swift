@@ -4,6 +4,7 @@ import os
 struct Action {
     let id: String
     let title: String
+    let symbol: String
     let condition: String?
     let perform: (String) -> Void
 
@@ -17,20 +18,20 @@ enum Actions {
     private static let log = Logger(subsystem: "dev.karur4n.miniclip", category: "actions")
 
     static let all: [Action] = [
-        Action(id: "copy", title: "コピー", condition: nil) { text in
+        Action(id: "copy", title: "コピー", symbol: "doc.on.doc", condition: nil) { text in
             NSPasteboard.general.clearContents()
             NSPasteboard.general.setString(text, forType: .string)
         },
-        Action(id: "open", title: "開く", condition: #"^https?://\S+$"#) { text in
+        Action(id: "open", title: "開く", symbol: "arrow.up.right.square", condition: #"^https?://\S+$"#) { text in
             open(text)
         },
-        Action(id: "google", title: "Google 検索", condition: nil) { text in
+        Action(id: "google", title: "Google 検索", symbol: "magnifyingglass", condition: nil) { text in
             open(fill("https://www.google.com/search?q={text}", with: text))
         },
-        Action(id: "translate", title: "翻訳", condition: "[A-Za-z]") { text in
+        Action(id: "translate", title: "翻訳", symbol: "translate", condition: "[A-Za-z]") { text in
             open(fill("https://translate.google.com/?sl=auto&tl=ja&text={text}", with: text))
         },
-        Action(id: "dictionary", title: "辞書", condition: #"^\S{1,30}$"#) { text in
+        Action(id: "dictionary", title: "辞書", symbol: "book", condition: #"^\S{1,30}$"#) { text in
             open(fill("dict://{text}", with: text))
         },
     ]

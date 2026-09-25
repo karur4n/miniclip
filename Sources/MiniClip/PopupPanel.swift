@@ -25,7 +25,7 @@ final class PopupPanel {
         close()
 
         let buttons = actions.map { action in
-            MenuItemButton(title: action.title) { [weak self] in
+            MenuItemButton(title: action.title, symbol: action.symbol) { [weak self] in
                 self?.close()
                 action.perform(text)
             }
@@ -125,24 +125,31 @@ private final class BorderView: NSView {
 }
 
 private final class MenuItemButton: NSView {
+    private let icon: NSImageView
     private let label: NSTextField
     private let handler: () -> Void
     private var isHovered = false {
         didSet { needsDisplay = true }
     }
 
-    init(title: String, handler: @escaping () -> Void) {
+    init(title: String, symbol: String, handler: @escaping () -> Void) {
+        icon = NSImageView(image: NSImage(systemSymbolName: symbol, accessibilityDescription: title)!)
         label = NSTextField(labelWithString: title)
         self.handler = handler
         super.init(frame: .zero)
         wantsLayer = true
         layer?.cornerRadius = 5
 
+        icon.symbolConfiguration = NSImage.SymbolConfiguration(pointSize: 13, weight: .regular)
         label.font = .systemFont(ofSize: 13)
+        addSubview(icon)
         addSubview(label)
+        icon.translatesAutoresizingMaskIntoConstraints = false
         label.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
-            label.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 10),
+            icon.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 10),
+            icon.centerYAnchor.constraint(equalTo: centerYAnchor),
+            label.leadingAnchor.constraint(equalTo: icon.trailingAnchor, constant: 4),
             label.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -10),
             label.topAnchor.constraint(equalTo: topAnchor, constant: 4),
             label.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -4),
@@ -164,6 +171,7 @@ private final class MenuItemButton: NSView {
     override func updateLayer() {
         layer?.backgroundColor = isHovered ? NSColor.controlAccentColor.cgColor : nil
         label.textColor = isHovered ? .white : .labelColor
+        icon.contentTintColor = isHovered ? .white : .labelColor
     }
 
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }

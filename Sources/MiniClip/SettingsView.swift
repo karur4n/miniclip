@@ -82,7 +82,9 @@ private struct ActionsSettingsView: View {
             List {
                 ForEach(ids, id: \.self) { id in
                     HStack {
-                        Toggle(title(id), isOn: shown(id))
+                        Toggle(isOn: shown(id)) {
+                            Label(action(id).title, systemImage: action(id).symbol)
+                        }
                         Spacer()
                         Image(systemName: "line.3.horizontal")
                             .foregroundStyle(.tertiary)
@@ -102,8 +104,8 @@ private struct ActionsSettingsView: View {
         .frame(width: 420, height: 280)
     }
 
-    private func title(_ id: String) -> String {
-        Actions.all.first { $0.id == id }!.title
+    private func action(_ id: String) -> Action {
+        Actions.all.first { $0.id == id }!
     }
 
     private func shown(_ id: String) -> Binding<Bool> {

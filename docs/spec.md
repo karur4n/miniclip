@@ -21,8 +21,8 @@
 小窓の見た目:
 
 - 背景はすりガラス（`NSVisualEffectView` の `.popover`）。角の半径は 10pt、縁に 0.5pt の区切り線の色の線
-- ボタンは枠なしの文字（13pt のシステムフォント、上下 4pt・左右 10pt の余白）
-- カーソルを乗せたボタンは、角丸 5pt のアクセント色の下地に白い文字
+- ボタンは枠なしのアイコンと文字（13pt のシステムフォント、アイコンと文字の間 4pt、上下 4pt・左右 10pt の余白）
+- カーソルを乗せたボタンは、角丸 5pt のアクセント色の下地に白いアイコンと文字
 - ボタンは押してその上で離したときだけ実行する
 - 0.1 秒で薄い状態から表示する
 - 色はシステムの色を使い、ライト／ダークモードとアクセントカラーの設定に従う
@@ -46,16 +46,17 @@
 
 - `id`: 変わらない識別子。並びと非表示の保存に使う
 - `title`: ボタンの表示名
+- `symbol`: ボタンのアイコン（SF Symbols の名前）
 - `condition`: 表示条件の正規表現（`nil` なら常に表示）
 - `perform`: 実行内容
 
-| id | title | condition | 実行内容 |
-|---|---|---|---|
-| copy | コピー | なし | 選択文字列をクリップボードに書き込む |
-| open | 開く | `^https?://\S+$` | 選択文字列を URL として既定のブラウザで開く |
-| google | Google 検索 | なし | `https://www.google.com/search?q={text}` を開く |
-| translate | 翻訳 | `[A-Za-z]` | `https://translate.google.com/?sl=auto&tl=ja&text={text}` を開く |
-| dictionary | 辞書 | `^\S{1,30}$` | `dict://{text}` を開く（macOS の辞書アプリ） |
+| id | title | symbol | condition | 実行内容 |
+|---|---|---|---|---|
+| copy | コピー | `doc.on.doc` | なし | 選択文字列をクリップボードに書き込む |
+| open | 開く | `arrow.up.right.square` | `^https?://\S+$` | 選択文字列を URL として既定のブラウザで開く |
+| google | Google 検索 | `magnifyingglass` | なし | `https://www.google.com/search?q={text}` を開く |
+| translate | 翻訳 | `translate` | `[A-Za-z]` | `https://translate.google.com/?sl=auto&tl=ja&text={text}` を開く |
+| dictionary | 辞書 | `book` | `^\S{1,30}$` | `dict://{text}` を開く（macOS の辞書アプリ） |
 
 - ボタンの並びと表示・非表示は設定画面で変えられる（下の「設定画面」）。変えていなければこの表の順で、すべて表示する
 - 表示条件の判定前に、選択文字列の前後の空白・改行を取り除く
@@ -69,7 +70,7 @@
   - ログイン時に起動: チェックボックス。`SMAppService.mainApp` の `register` / `unregister`。失敗したら理由を赤字で出す
   - アクセシビリティ: 許可済み／未許可の表示（1 秒ごとに確認）と、システム設定のアクセシビリティの画面を開くボタン
 - 「操作」タブ（`list.bullet`）
-  - すべての操作を一覧にする。各行はチェックボックス、操作名、右端に並べ替えの目印（`line.3.horizontal`）
+  - すべての操作を一覧にする。各行はチェックボックス、アイコンと操作名、右端に並べ替えの目印（`line.3.horizontal`）
   - 行をドラッグして並べ替える（SwiftUI の `List` と `.onMove`）
   - チェックを外した操作は小窓に出さない
 - 変えたらすぐ `UserDefaults` に保存し、次に小窓を出すときから使う

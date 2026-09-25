@@ -49,7 +49,7 @@ func fillEncodes() {
 }
 
 private func action(_ id: String) -> Action {
-    Action(id: id, title: id.uppercased(), condition: nil) { _ in }
+    Action(id: id, title: id.uppercased(), symbol: "circle", condition: nil) { _ in }
 }
 
 @Test("保存した識別子の並びで並べ、保存にない操作はコードの順で末尾に付ける")
