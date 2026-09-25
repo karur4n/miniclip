@@ -7,7 +7,39 @@ enum SelectionReader {
         if let text = readViaAccessibility() {
             return text
         }
+        // NOTE: コピーできるものがないアプリへ Cmd+C を送ると警告音が鳴る（ウインドウを動かすドラッグなど）
+        guard !isCopyMenuDisabled() else { return nil }
         return readViaCopy()
+    }
+
+    // NOTE: メニューを読めない、または Cmd+C の項目がないアプリでは false を返し、これまでどおり Cmd+C を送る
+    private static func isCopyMenuDisabled() -> Bool {
+        guard let app = NSWorkspace.shared.frontmostApplication,
+              let menuBar = attribute(AXUIElementCreateApplication(app.processIdentifier), kAXMenuBarAttribute)
+        else { return false }
+        for top in children(menuBar as! AXUIElement) {
+            for menu in children(top) {
+                for item in children(menu) where isCommandC(item) {
+                    return (attribute(item, kAXEnabledAttribute) as? Bool) == false
+                }
+            }
+        }
+        return false
+    }
+
+    private static func isCommandC(_ item: AXUIElement) -> Bool {
+        (attribute(item, kAXMenuItemCmdCharAttribute) as? String) == "C"
+            && (attribute(item, kAXMenuItemCmdModifiersAttribute) as? Int) == 0
+    }
+
+    private static func attribute(_ element: AXUIElement, _ name: String) -> CFTypeRef? {
+        var value: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(element, name as CFString, &value) == .success else { return nil }
+        return value
+    }
+
+    private static func children(_ element: AXUIElement) -> [AXUIElement] {
+        (attribute(element, kAXChildrenAttribute) as? [AXUIElement]) ?? []
     }
 
     private static func readViaAccessibility() -> String? {
