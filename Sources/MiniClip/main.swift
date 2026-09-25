@@ -6,6 +6,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let log = Logger(subsystem: "dev.karur4n.miniclip", category: "app")
     private var statusItem: NSStatusItem!
     private var trustTimer: Timer?
+    private var settingsWindow: NSWindow?
     private let popup = PopupPanel()
     private lazy var watcher = SelectionWatcher { [weak self] point in
         self?.selectionDidEnd(at: point)
@@ -14,6 +15,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         let menu = NSMenu()
+        let settings = NSMenuItem(title: "設定…", action: #selector(openSettings), keyEquivalent: ",")
+        settings.target = self
+        menu.addItem(settings)
         menu.addItem(withTitle: "終了", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         statusItem.menu = menu
 
@@ -44,6 +48,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                   let menu = Actions.menu(for: raw) else { return }
             popup.show(text: menu.text, actions: menu.actions, at: point)
         }
+    }
+
+    @objc private func openSettings() {
+        if settingsWindow == nil {
+            settingsWindow = Settings.makeWindow()
+        }
+        NSApp.activate(ignoringOtherApps: true)
+        settingsWindow?.makeKeyAndOrderFront(nil)
     }
 
     private func setIcon(trusted: Bool) {
