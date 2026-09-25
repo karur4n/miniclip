@@ -40,8 +40,12 @@ enum SelectionReader {
             Thread.sleep(forTimeInterval: 0.01)
             text = pasteboard.string(forType: .string)
         }
+        // NOTE: Finder でファイルを選んだまま Cmd+C が届くと、ファイル名が文字列として取れる。ファイルなら選択なしとする
+        let copiedFiles = pasteboard.canReadObject(
+            forClasses: [NSURL.self],
+            options: [.urlReadingFileURLsOnly: true])
         restore(pasteboard, saved)
-        return text
+        return copiedFiles ? nil : text
     }
 
     private static func snapshot(_ pasteboard: NSPasteboard) -> [NSPasteboardItem] {
