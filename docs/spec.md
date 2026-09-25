@@ -6,6 +6,7 @@
 
 1. 画面全体のマウス操作を監視する
    - 左ボタンを離したとき、押した位置から 5pt 以上動いていれば「ドラッグ選択」とみなす
+   - ただし、押してから離すまでにドラッグ用クリップボード（`NSPasteboard(name: .drag)`）の `changeCount` が変わっていたら、ファイルや文字をドラッグして落とす操作なので無視する
    - 左ボタンのダブルクリック・トリプルクリックも対象にする
 2. 50ms 待ってから選択文字列を取得する（アプリ側の選択更新を待つ）
 3. 選択文字列が空なら何もしない
@@ -42,17 +43,18 @@
 
 操作は Swift コード内の配列で定義する。各操作は次を持つ。
 
+- `id`: 変わらない識別子。並びと非表示の保存に使う
 - `title`: ボタンの表示名
 - `condition`: 表示条件の正規表現（`nil` なら常に表示）
 - `perform`: 実行内容
 
-| title | condition | 実行内容 |
-|---|---|---|
-| コピー | なし | 選択文字列をクリップボードに書き込む |
-| 開く | `^https?://\S+$` | 選択文字列を URL として既定のブラウザで開く |
-| Google | なし | `https://www.google.com/search?q={text}` を開く |
-| 翻訳 | `[A-Za-z]` | `https://translate.google.com/?sl=auto&tl=ja&text={text}` を開く |
-| 辞書 | `^\S{1,30}$` | `dict://{text}` を開く（macOS の辞書アプリ） |
+| id | title | condition | 実行内容 |
+|---|---|---|---|
+| copy | コピー | なし | 選択文字列をクリップボードに書き込む |
+| open | 開く | `^https?://\S+$` | 選択文字列を URL として既定のブラウザで開く |
+| google | Google 検索 | なし | `https://www.google.com/search?q={text}` を開く |
+| translate | 翻訳 | `[A-Za-z]` | `https://translate.google.com/?sl=auto&tl=ja&text={text}` を開く |
+| dictionary | 辞書 | `^\S{1,30}$` | `dict://{text}` を開く（macOS の辞書アプリ） |
 
 - ボタンの並びと表示・非表示は設定画面で変えられる（下の「設定画面」）。変えていなければこの表の順で、すべて表示する
 - 表示条件の判定前に、選択文字列の前後の空白・改行を取り除く
@@ -61,12 +63,17 @@
 ## 設定画面
 
 - メニューバーのメニューの「設定…」（⌘,）で開く。開くときに MiniClip を前面に出す
-- すべての操作を一覧にする。各行はチェックボックスと操作名
+- macOS の環境設定の形にする。ツールバーにアイコン付きのタブを並べ（`NSTabViewController` の `.toolbar`、ウインドウの `toolbarStyle = .preference`）、各タブの中身は SwiftUI で作る。タブを切り替えるとウインドウの大きさが中身に合わせて変わる
+- 「一般」タブ（`gearshape`）
+  - ログイン時に起動: チェックボックス。`SMAppService.mainApp` の `register` / `unregister`。失敗したら理由を赤字で出す
+  - アクセシビリティ: 許可済み／未許可の表示（1 秒ごとに確認）と、システム設定のアクセシビリティの画面を開くボタン
+- 「操作」タブ（`list.bullet`）
+  - すべての操作を一覧にする。各行はチェックボックス、操作名、右端に並べ替えの目印（`line.3.horizontal`）
   - 行をドラッグして並べ替える（SwiftUI の `List` と `.onMove`）
   - チェックを外した操作は小窓に出さない
 - 変えたらすぐ `UserDefaults` に保存し、次に小窓を出すときから使う
-  - 並び: 操作名の配列（キー `actionOrder`）。保存にない操作（コードで足した・名前を変えた）はコードの順で末尾に付け、保存にあっていまない名前と重複は無視する
-  - 非表示: 操作名の配列（キー `hiddenActions`）
+  - 並び: 操作の `id` の配列（キー `actionOrderIDs`）。保存にない操作（コードで足した）はコードの順で末尾に付け、保存にあっていまない `id` と重複は無視する
+  - 非表示: 操作の `id` の配列（キー `hiddenActionIDs`）
 
 ## 権限
 
@@ -92,7 +99,7 @@ miniclip/
 │   ├── SelectionWatcher.swift マウス監視、選択操作の検知
 │   ├── SelectionReader.swift  選択文字列の取得
 │   ├── Actions.swift          操作の一覧、表示条件の判定、並びと非表示の保存
-│   ├── SettingsView.swift     設定画面（SwiftUI）
+│   ├── SettingsView.swift     設定画面（タブのウインドウと各タブの SwiftUI）
 │   └── PopupPanel.swift       小窓の表示と閉じる処理
 └── Tests/MiniClipTests/
     └── ActionsTests.swift     表示条件の判定
