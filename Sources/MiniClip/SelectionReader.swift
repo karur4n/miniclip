@@ -7,24 +7,28 @@ enum SelectionReader {
         if let text = readViaAccessibility() {
             return text
         }
-        // NOTE: コピーできるものがないアプリへ Cmd+C を送ると警告音が鳴る（ウインドウを動かすドラッグなど）
-        guard !isCopyMenuDisabled() else { return nil }
-        return readViaCopy()
+        guard let app = NSWorkspace.shared.frontmostApplication else { return nil }
+        // NOTE: キー入力を作ると、キー入力を監視するアプリ（Klack など）に拾われる。メニューの「コピー」を押せるならそちらを使う
+        if let item = copyMenuItem(of: app) {
+            // NOTE: コピーできるものがないときに押すと警告音が鳴る（ウインドウを動かすドラッグなど）
+            guard (attribute(item, kAXEnabledAttribute) as? Bool) != false else { return nil }
+            return readViaCopy { AXUIElementPerformAction(item, kAXPressAction as CFString) }
+        }
+        return readViaCopy { sendCommandC(to: app.processIdentifier) }
     }
 
-    // NOTE: メニューを読めない、または Cmd+C の項目がないアプリでは false を返し、これまでどおり Cmd+C を送る
-    private static func isCopyMenuDisabled() -> Bool {
-        guard let app = NSWorkspace.shared.frontmostApplication,
-              let menuBar = attribute(AXUIElementCreateApplication(app.processIdentifier), kAXMenuBarAttribute)
-        else { return false }
+    private static func copyMenuItem(of app: NSRunningApplication) -> AXUIElement? {
+        guard let menuBar = attribute(AXUIElementCreateApplication(app.processIdentifier), kAXMenuBarAttribute) else {
+            return nil
+        }
         for top in children(menuBar as! AXUIElement) {
             for menu in children(top) {
-                for item in children(menu) where isCommandC(item) {
-                    return (attribute(item, kAXEnabledAttribute) as? Bool) == false
+                if let item = children(menu).first(where: isCommandC) {
+                    return item
                 }
             }
         }
-        return false
+        return nil
     }
 
     private static func isCommandC(_ item: AXUIElement) -> Bool {
@@ -54,12 +58,12 @@ enum SelectionReader {
         return selected as? String
     }
 
-    private static func readViaCopy() -> String? {
+    private static func readViaCopy(trigger: () -> Void) -> String? {
         let pasteboard = NSPasteboard.general
         let saved = snapshot(pasteboard)
         let before = pasteboard.changeCount
 
-        sendCommandC()
+        trigger()
         let deadline = Date().addingTimeInterval(0.3)
         while pasteboard.changeCount == before && Date() < deadline {
             Thread.sleep(forTimeInterval: 0.01)
@@ -99,13 +103,13 @@ enum SelectionReader {
         }
     }
 
-    private static func sendCommandC() {
+    private static func sendCommandC(to pid: pid_t) {
         // NOTE: 仮想キーコード 8 は物理キー位置の C。JIS 配列でも同じ
         let source = CGEventSource(stateID: .combinedSessionState)
         for keyDown in [true, false] {
             let event = CGEvent(keyboardEventSource: source, virtualKey: 8, keyDown: keyDown)
             event?.flags = .maskCommand
-            event?.post(tap: .cghidEventTap)
+            event?.postToPid(pid)
         }
     }
 }
