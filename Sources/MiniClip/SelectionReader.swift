@@ -3,18 +3,16 @@ import ApplicationServices
 
 enum SelectionReader {
     static func read() -> String? {
-        // NOTE: アクセシビリティ API が空文字を返したら選択なしと確定する。Cmd+C を送ると警告音やファイルのコピーが起きる
+        // NOTE: アクセシビリティ API が空文字を返したら選択なしと確定する。コピーさせると警告音やファイルのコピーが起きる
         if let text = readViaAccessibility() {
             return text
         }
-        guard let app = NSWorkspace.shared.frontmostApplication else { return nil }
-        // NOTE: キー入力を作ると、キー入力を監視するアプリ（Klack など）に拾われる。メニューの「コピー」を押せるならそちらを使う
-        if let item = copyMenuItem(of: app) {
-            // NOTE: コピーできるものがないときに押すと警告音が鳴る（ウインドウを動かすドラッグなど）
-            guard (attribute(item, kAXEnabledAttribute) as? Bool) != false else { return nil }
-            return readViaCopy { AXUIElementPerformAction(item, kAXPressAction as CFString) }
-        }
-        return readViaCopy { sendCommandC(to: app.processIdentifier) }
+        // NOTE: Cmd+C のキー入力は作らない。キー入力を監視するアプリ（Klack など）に拾われ、ゲームではドラッグのたびに C キーとして受け取られる
+        guard let app = NSWorkspace.shared.frontmostApplication,
+              let item = copyMenuItem(of: app) else { return nil }
+        // NOTE: コピーできるものがないときに押すと警告音が鳴る（ウインドウを動かすドラッグなど）
+        guard (attribute(item, kAXEnabledAttribute) as? Bool) != false else { return nil }
+        return readViaCopy { AXUIElementPerformAction(item, kAXPressAction as CFString) }
     }
 
     private static func copyMenuItem(of app: NSRunningApplication) -> AXUIElement? {
@@ -76,7 +74,7 @@ enum SelectionReader {
             Thread.sleep(forTimeInterval: 0.01)
             text = pasteboard.string(forType: .string)
         }
-        // NOTE: Finder でファイルを選んだまま Cmd+C が届くと、ファイル名が文字列として取れる。ファイルなら選択なしとする
+        // NOTE: Finder でファイルを選んだままコピーさせると、ファイル名が文字列として取れる。ファイルなら選択なしとする
         let copiedFiles = pasteboard.canReadObject(
             forClasses: [NSURL.self],
             options: [.urlReadingFileURLsOnly: true])
@@ -100,16 +98,6 @@ enum SelectionReader {
         pasteboard.clearContents()
         if !items.isEmpty {
             pasteboard.writeObjects(items)
-        }
-    }
-
-    private static func sendCommandC(to pid: pid_t) {
-        // NOTE: 仮想キーコード 8 は物理キー位置の C。JIS 配列でも同じ
-        let source = CGEventSource(stateID: .combinedSessionState)
-        for keyDown in [true, false] {
-            let event = CGEvent(keyboardEventSource: source, virtualKey: 8, keyDown: keyDown)
-            event?.flags = .maskCommand
-            event?.postToPid(pid)
         }
     }
 }
